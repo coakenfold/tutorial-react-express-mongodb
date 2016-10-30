@@ -7,7 +7,15 @@
 // Require Hook will use Babel presets we specified in package.json
 require('babel-register');
 
+// Just to be consistent and systematic, 
+// I usually organize my module imports in the following order:
+// - Core Node.js modules — path, querystring, http.
+// - Third-party NPM libraries — mongoose, express, request.
+// - Application files — controllers, models, config.
 
+var mongoose = require('mongoose');
+var Character = require('./models/character');
+var config = require('./config');
 var swig = require('swig');
 var React = require('react');
 var ReactDOM = require('react-dom/server');
@@ -18,6 +26,11 @@ var express = require('express');
 var path = require('path');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
+
+mongoose.connect(config.database);
+mongoose.connection.on('error', function(){
+  console.info('Error: Could not connect to MongoDb. Dif you forget to run `mongod`?');
+});
 
 var app = express();
 
