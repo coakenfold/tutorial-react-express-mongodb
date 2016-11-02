@@ -12,7 +12,7 @@ require('babel-register');
 // - Core Node.js modules — path, querystring, http.
 // - Third-party NPM libraries — mongoose, express, request.
 // - Application files — controllers, models, config.
-
+var _ = require('underscore');
 var async = require('async');
 var request = require('request');
 var xml2js = require('xml2js');
@@ -43,6 +43,47 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname,'public')));
+
+/**
+* GET /api/characters
+* Returns 2 random characters of the same gender that have not been voted yet.
+*/
+app.get('/api/characters', function(req, res, next){
+  var choices = ['Female','Male'];
+  var randomGender = _.sample(choices);
+
+  Character.find({ random: { $near: [Math.random(), 0] } })
+    .where('voted', false)
+    .where('gender', randomGender)
+    .limit(2)
+    .exec(function(err, characters) {
+      if (err) return next(err);
+
+      if (characters.length === 2) {
+        return res.send(characters);
+      }
+
+      var oppositeGender = _.first(_.without(choices,randomGender));
+
+      Character
+        .find({ random: { $near: [Math.random(), 0]}})
+        .where('voted', oppositeGender)
+        .limit(2)
+        .exec(function(err, characters) {
+          if (err) return next(err);
+
+          if (characters.length === 2) {
+            return res.send(characters);
+          }
+
+          Character.update({},{$set: {voted: false}},{multi: true}, function(err){
+            if (err) return next(err);
+            res.send([]);
+          });
+        });
+    });
+});
+
 
 /**
 * POST /api/characters
@@ -134,6 +175,8 @@ app.use(function(req, res){
 // app.listen(app.get('port'), function(){
 //   console.log('Express server is listening on port ' + app.get('port'));
 // });
+
+
 /**
  * Socket.io stuff.
  */
