@@ -33,7 +33,7 @@ var bodyParser = require('body-parser');
 
 mongoose.connect(config.database);
 mongoose.connection.on('error', function(){
-  console.info('Error: Could not connect to MongoDb. Dif you forget to run `mongod`?');
+  console.info('Error: Could not connect to MongoDb. Did you forget to run `mongod`?');
 });
 
 var app = express();
@@ -44,6 +44,10 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname,'public')));
 
+/**
+* POST /api/characters
+* Adds new character to the databse.
+*/
 app.post('/api/characters', function(req, res, next){
   var gender = req.body.gender;
   var characterName = req.body.name;
