@@ -15,7 +15,7 @@ class HomeStore {
     toastr.error(errorMessage);
   }
 
-  onVoterFail(errorMessage) {
+  onVoteFail(errorMessage) {
     toastr.error(errorMessage);
   }
 }
