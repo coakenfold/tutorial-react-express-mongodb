@@ -234,6 +234,24 @@ app.get('/api/characters/count', function(req, res, next) {
   });
 });
 
+/**
+* GET /api/characters/search
+* Looks up a character by name. (case-insensitive)
+*/
+app.get('/api/characters/search', function(req, res, next) {
+  car characterName = new RegExp(req.query.name, 'i');
+
+  Character.findOne({ name: characterName }, function(err, character) {
+    if (err) return next(err);
+
+    if (!character) {
+      return res.status(404).send({ message: 'Character not found.' });
+    }
+
+    res.send(character);
+  })
+})
+
 app.use(function(req, res){
   Router.match({ routes: routes.default, location: req.url }, function(err, redirectLocation, renderProps) {
     if (err) {
