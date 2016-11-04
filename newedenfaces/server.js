@@ -249,8 +249,39 @@ app.get('/api/characters/search', function(req, res, next) {
     }
 
     res.send(character);
-  })
-})
+  });
+});
+
+
+/**
+* GET /api/characters/top
+* Return 100 highest ranked characters. Filter by gender, race and bloodline.
+*/
+app.get('/api/characters/top', function(req, res, next) {
+  var params = req.query;
+  var conditions = {};
+
+  _.each(params, function(value, key) {
+    conditions[key] = new RegExp('^' + value + '$', 'i');
+  });
+
+  Character
+    .find(conditions)
+    .sort('-wins')
+    .limit(100)
+    .exec(function(err, characters) {
+      if (err) return next(err);
+
+      // Sort by winning percentage
+      characters.sort(function(a, b) {
+        if (a.wins / (a.wins + a.losses) < b.wins / (b.wins + b.losses)) { return 1; }
+        if (a.wins / (a.wins + a.losses) > b.wins / (b.wins + b.losses)) { return -1; }
+        return 0;
+      });
+
+      res.send(characters);
+    });
+});
 
 app.use(function(req, res){
   Router.match({ routes: routes.default, location: req.url }, function(err, redirectLocation, renderProps) {
