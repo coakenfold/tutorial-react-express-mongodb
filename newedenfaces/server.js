@@ -85,74 +85,6 @@ app.get('/api/characters', function(req, res, next){
 });
 
 /**
-* PUT /api/characters
-* Update winning and losing count for both characters.
-*/
-app.put('/api/characters', function(req, res, next){
-  var winner = req.body.winner;
-  var loser = req.body.loser;
-
-  if (!winner || !loser) {
-    return res.status(404).send({message: 'Voting requires two characters.'});
-  }
-
-  if (winner === loser) {
-    return res.status(404).send({message: "Cannot vote for and against the same character"});
-  }
-
-  aync.parallel([
-    function(callback) {
-      Character.findOne({ characterId: winner }, function(err, winner){
-        callback(err, winner);
-      });
-    },
-    function(callback) {
-      Character.findOne({characterId: loser}, function(err,loser){
-        callback(err, loser);
-      })
-    }
-  ],
-  function(err, results) {
-    if (err) return next(err);
-
-    var winner = results[0];
-    var loser = results[1];
-
-    if (!winner || !loser) {
-      return res.status(404).send({ message: 'One of the characters no longer exists.'});
-    }
-
-    // Once the tasks have completed, 
-    // the results are passed to the final callback as an array.
-    if (winner.voted || loser.voted) {
-      return res.status(200).end();
-    }
-
-    async.parallel([
-      function(callback){
-        winner.wins += 1;
-        winner.voted = true;
-        winner.random = [Math.random(), 0];
-        winner.save(function(err){
-          callback(err);
-        })
-      },
-      function(callback){
-        loser.losses += 1;
-        loser.voted = true;
-        loser.random = [Math.random(), 0];
-        loser.save(function(err) {
-          callback(err);
-        });
-      }
-    ], function(err) {
-      if (err) return next(err);
-      res.status(200).end();
-    });
-  });
-});
-
-/**
 * POST /api/characters
 * Adds new character to the databse.
 */
@@ -221,6 +153,85 @@ app.post('/api/characters', function(req, res, next){
       });
     }
   ]);
+});
+
+/**
+* PUT /api/characters
+* Update winning and losing count for both characters.
+*/
+app.put('/api/characters', function(req, res, next){
+  var winner = req.body.winner;
+  var loser = req.body.loser;
+
+  if (!winner || !loser) {
+    return res.status(404).send({message: 'Voting requires two characters.'});
+  }
+
+  if (winner === loser) {
+    return res.status(404).send({message: "Cannot vote for and against the same character"});
+  }
+
+  aync.parallel([
+    function(callback) {
+      Character.findOne({ characterId: winner }, function(err, winner){
+        callback(err, winner);
+      });
+    },
+    function(callback) {
+      Character.findOne({characterId: loser}, function(err,loser){
+        callback(err, loser);
+      })
+    }
+  ],
+  function(err, results) {
+    if (err) return next(err);
+
+    var winner = results[0];
+    var loser = results[1];
+
+    if (!winner || !loser) {
+      return res.status(404).send({ message: 'One of the characters no longer exists.'});
+    }
+
+    // Once the tasks have completed, 
+    // the results are passed to the final callback as an array.
+    if (winner.voted || loser.voted) {
+      return res.status(200).end();
+    }
+
+    async.parallel([
+      function(callback){
+        winner.wins += 1;
+        winner.voted = true;
+        winner.random = [Math.random(), 0];
+        winner.save(function(err){
+          callback(err);
+        })
+      },
+      function(callback){
+        loser.losses += 1;
+        loser.voted = true;
+        loser.random = [Math.random(), 0];
+        loser.save(function(err) {
+          callback(err);
+        });
+      }
+    ], function(err) {
+      if (err) return next(err);
+      res.status(200).end();
+    });
+  });
+});
+
+/**
+* GET /api/characters/count
+* Returns the total number of characters.
+*/
+app.get('/api/characters/count', function(req, res, next) {
+  Character.count({}, function(err, count) {
+    if (err) return next(err);
+    res.send({ count: count });
+  });
 });
 
 app.use(function(req, res){
