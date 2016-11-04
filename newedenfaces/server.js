@@ -297,6 +297,25 @@ app.get('/api/characters/top', function(req, res, next) {
     });
 });
 
+/**
+* GET /api/characters/:id
+* Returns detailed character information.
+*/
+app.get('/api/characters/:id', function(req, res, next) {
+  var id = req.params.id;
+
+  Character.findOne({ charcterId: id }, function(err, character){
+    if (err) return next(err);
+
+    if (!character) {
+      return res.status(400).send({message: "Character not found." });
+    }
+
+    res.send(character);
+  });
+});
+
+
 app.use(function(req, res){
   Router.match({ routes: routes.default, location: req.url }, function(err, redirectLocation, renderProps) {
     if (err) {
