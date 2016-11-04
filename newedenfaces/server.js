@@ -45,11 +45,11 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname,'public')));
 
 /**
-* GET /api/characters
-* Returns 2 random characters of the same gender that have not been voted yet.
-*/
-app.get('/api/characters', function(req, res, next){
-  var choices = ['Female','Male'];
+ * GET /api/characters
+ * Returns 2 random characters of the same gender that have not been voted yet.
+ */
+app.get('/api/characters', function(req, res, next) {
+  var choices = ['Female', 'Male'];
   var randomGender = _.sample(choices);
 
   Character.find({ random: { $near: [Math.random(), 0] } })
@@ -63,11 +63,12 @@ app.get('/api/characters', function(req, res, next){
         return res.send(characters);
       }
 
-      var oppositeGender = _.first(_.without(choices,randomGender));
+      var oppositeGender = _.first(_.without(choices, randomGender));
 
       Character
-        .find({ random: { $near: [Math.random(), 0]}})
-        .where('voted', oppositeGender)
+        .find({ random: { $near: [Math.random(), 0] } })
+        .where('voted', false)
+        .where('gender', oppositeGender)
         .limit(2)
         .exec(function(err, characters) {
           if (err) return next(err);
@@ -76,7 +77,7 @@ app.get('/api/characters', function(req, res, next){
             return res.send(characters);
           }
 
-          Character.update({},{$set: {voted: false}},{multi: true}, function(err){
+          Character.update({}, { $set: { voted: false } }, { multi: true }, function(err) {
             if (err) return next(err);
             res.send([]);
           });
@@ -156,77 +157,75 @@ app.post('/api/characters', function(req, res, next){
 });
 
 /**
-* PUT /api/characters
-* Update winning and losing count for both characters.
-*/
-app.put('/api/characters', function(req, res, next){
+ * PUT /api/characters
+ * Update winning and losing count for both characters.
+ */
+app.put('/api/characters', function(req, res, next) {
   var winner = req.body.winner;
   var loser = req.body.loser;
 
   if (!winner || !loser) {
-    return res.status(404).send({message: 'Voting requires two characters.'});
+    return res.status(400).send({ message: 'Voting requires two characters.' });
   }
 
   if (winner === loser) {
-    return res.status(404).send({message: "Cannot vote for and against the same character"});
+    return res.status(400).send({ message: 'Cannot vote for and against the same character.' });
   }
 
-  aync.parallel([
-    function(callback) {
-      Character.findOne({ characterId: winner }, function(err, winner){
-        callback(err, winner);
-      });
-    },
-    function(callback) {
-      Character.findOne({characterId: loser}, function(err,loser){
-        callback(err, loser);
-      })
-    }
-  ],
-  function(err, results) {
-    if (err) return next(err);
-
-    var winner = results[0];
-    var loser = results[1];
-
-    if (!winner || !loser) {
-      return res.status(404).send({ message: 'One of the characters no longer exists.'});
-    }
-
-    // Once the tasks have completed, 
-    // the results are passed to the final callback as an array.
-    if (winner.voted || loser.voted) {
-      return res.status(200).end();
-    }
-
-    async.parallel([
-      function(callback){
-        winner.wins += 1;
-        winner.voted = true;
-        winner.random = [Math.random(), 0];
-        winner.save(function(err){
-          callback(err);
-        })
+  async.parallel([
+      function(callback) {
+        Character.findOne({ characterId: winner }, function(err, winner) {
+          callback(err, winner);
+        });
       },
-      function(callback){
-        loser.losses += 1;
-        loser.voted = true;
-        loser.random = [Math.random(), 0];
-        loser.save(function(err) {
-          callback(err);
+      function(callback) {
+        Character.findOne({ characterId: loser }, function(err, loser) {
+          callback(err, loser);
         });
       }
-    ], function(err) {
+    ],
+    function(err, results) {
       if (err) return next(err);
-      res.status(200).end();
+
+      var winner = results[0];
+      var loser = results[1];
+
+      if (!winner || !loser) {
+        return res.status(404).send({ message: 'One of the characters no longer exists.' });
+      }
+
+      if (winner.voted || loser.voted) {
+        return res.status(200).end();
+      }
+
+      async.parallel([
+        function(callback) {
+          winner.wins += 1;
+          winner.voted = true;
+          winner.random = [Math.random(), 0];
+          winner.save(function(err) {
+            callback(err);
+          });
+        },
+        function(callback) {
+          loser.losses += 1;
+          loser.voted = true;
+          loser.random = [Math.random(), 0];
+          loser.save(function(err) {
+            callback(err);
+          });
+        }
+      ], function(err) {
+        if (err) return next(err);
+        res.status(200).end();
+      });
     });
-  });
 });
 
 /**
-* GET /api/characters/count
-* Returns the total number of characters.
-*/
+ * GET /api/characters/count
+ * Returns the total number of characters.
+ */
 app.get('/api/characters/count', function(req, res, next) {
   Character.count({}, function(err, count) {
     if (err) return next(err);
@@ -235,11 +234,11 @@ app.get('/api/characters/count', function(req, res, next) {
 });
 
 /**
-* GET /api/characters/search
-* Looks up a character by name. (case-insensitive)
-*/
+ * GET /api/characters/search
+ * Looks up a character by name. (case-insensitive)
+ */
 app.get('/api/characters/search', function(req, res, next) {
-  car characterName = new RegExp(req.query.name, 'i');
+  var characterName = new RegExp(req.query.name, 'i');
 
   Character.findOne({ name: characterName }, function(err, character) {
     if (err) return next(err);
@@ -253,9 +252,9 @@ app.get('/api/characters/search', function(req, res, next) {
 });
 
 /**
-* GET /api/characters/shame
-* Returns 100 lowest ranked characters.
-*/
+ * GET /api/characters/shame
+ * Returns 100 lowest ranked characters.
+ */
 app.get('/api/characters/shame', function(req, res, next) {
   Character
     .find()
@@ -268,9 +267,9 @@ app.get('/api/characters/shame', function(req, res, next) {
 });
 
 /**
-* GET /api/characters/top
-* Return 100 highest ranked characters. Filter by gender, race and bloodline.
-*/
+ * GET /api/characters/top
+ * Return 100 highest ranked characters. Filter by gender, race and bloodline.
+ */
 app.get('/api/characters/top', function(req, res, next) {
   var params = req.query;
   var conditions = {};
@@ -281,7 +280,7 @@ app.get('/api/characters/top', function(req, res, next) {
 
   Character
     .find(conditions)
-    .sort('-wins')
+    .sort('-wins') // Sort in descending order (highest wins on top)
     .limit(100)
     .exec(function(err, characters) {
       if (err) return next(err);
@@ -298,17 +297,17 @@ app.get('/api/characters/top', function(req, res, next) {
 });
 
 /**
-* GET /api/characters/:id
-* Returns detailed character information.
-*/
+ * GET /api/characters/:id
+ * Returns detailed character information.
+ */
 app.get('/api/characters/:id', function(req, res, next) {
   var id = req.params.id;
 
-  Character.findOne({ charcterId: id }, function(err, character){
+  Character.findOne({ characterId: id }, function(err, character) {
     if (err) return next(err);
 
     if (!character) {
-      return res.status(400).send({message: "Character not found." });
+      return res.status(404).send({ message: 'Character not found.' });
     }
 
     res.send(character);
@@ -316,13 +315,13 @@ app.get('/api/characters/:id', function(req, res, next) {
 });
 
 /**
-* POST /api/report
-* Reports a character. Character is removed after 4 reports.
-*/
+ * POST /api/report
+ * Reports a character. Character is removed after 4 reports.
+ */
 app.post('/api/report', function(req, res, next) {
   var characterId = req.body.characterId;
 
-  Character.findOne({ charterId: characterId }, function(err, character) {
+  Character.findOne({ characterId: characterId }, function(err, character) {
     if (err) return next(err);
 
     if (!character) {
@@ -333,13 +332,12 @@ app.post('/api/report', function(req, res, next) {
 
     if (character.reports > 4) {
       character.remove();
-      return res.send({ message: character.name + ' has been deleted.'});
+      return res.send({ message: character.name + ' has been deleted.' });
     }
 
     character.save(function(err) {
       if (err) return next(err);
-
-      res.send({message: character.name + ' has been reported.'});
+      res.send({ message: character.name + ' has been reported.' });
     });
   });
 });
